@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Logan's Budget</title>
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Budget" />
+  <meta name="theme-color" content="#0f0c29" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+    html,body{height:100%;background:#0f0c29;overflow-x:hidden}
+    body{font-family:'DM Sans',sans-serif;color:#e2e8f0}
+    input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+    input,button{-webkit-appearance:none;border-radius:0}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script type="text/babel">
+const{useState}=React;
+const BUDGET={"Food & Dining":400,"Gas":250,"Shopping":100,"Subscriptions":60,"Personal":100,"Other":100};
+const COLORS={"Food & Dining":"#ef4444","Gas":"#f97316","Shopping":"#eab308","Subscriptions":"#8b5cf6","Personal":"#06b6d4","Other":"#6b7280"};
+const ICONS={"Food & Dining":"🍔","Gas":"⛽","Shopping":"🛍️","Subscriptions":"📱","Personal":"👤","Other":"📦"};
+const INCOME=7200,FIXED=5496,TOTAL=Object.values(BUDGET).reduce((a,b)=>a+b,0),EFGOAL=1000;
+const SEED=[
+  {id:1001,amount:100.00,category:"Other",note:"🚨 Gambling - Venmo Add Funds",date:"2026-04-06"},
+  {id:1002,amount:99.89,category:"Other",note:"Beauregard Electric",date:"2026-04-06"},
+  {id:1003,amount:63.55,category:"Food & Dining",note:"Honey B Ham",date:"2026-04-06"},
+  {id:1004,amount:36.00,category:"Other",note:"Venmo - Mason Baker",date:"2026-04-06"},
+  {id:1005,amount:35.23,category:"Personal",note:"Good Day Farm (THC - tapering!)",date:"2026-04-06"},
+  {id:1006,amount:23.39,category:"Food & Dining",note:"Insomnia Cookies",date:"2026-04-06"},
+  {id:1007,amount:14.13,category:"Subscriptions",note:"Microsoft Xbox",date:"2026-04-06"},
+  {id:1008,amount:14.13,category:"Subscriptions",note:"⚠️ Xbox duplicate - cancel one",date:"2026-04-06"},
+  {id:1009,amount:12.17,category:"Gas",note:"Circle K",date:"2026-04-06"},
+  {id:1010,amount:9.10,category:"Food & Dining",note:"Popeyes",date:"2026-04-06"},
+  {id:1011,amount:7.49,category:"Food & Dining",note:"Honey B Ham",date:"2026-04-06"},
+  {id:1012,amount:4.22,category:"Gas",note:"Circle K",date:"2026-04-06"},
+  {id:1013,amount:22.15,category:"Subscriptions",note:"Apple.com/Bill",date:"2026-04-01"},
+  {id:1014,amount:146.14,category:"Other",note:"Astros Retail",date:"2026-04-01"},
+  {id:1015,amount:54.13,category:"Other",note:"Astros Retail",date:"2026-04-01"},
+  {id:1016,amount:22.02,category:"Food & Dining",note:"Minute Maid Concessions",date:"2026-04-02"},
+  {id:1017,amount:21.11,category:"Food & Dining",note:"Minute Maid Concessions",date:"2026-04-02"},
+];
+function mk(){const n=new Date();return`${n.getFullYear()}-${n.getMonth()+1}`}
+function mlabel(k){const[y,m]=k.split("-").map(Number);return new Date(y,m-1,1).toLocaleString("default",{month:"long",year:"numeric"})}
+function fc(n){return`$${Math.abs(n).toFixed(2)}`}
+function dLeft(){const n=new Date();return new Date(n.getFullYear(),n.getMonth()+1,0).getDate()-n.getDate()}
+function ld(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
+function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+
+function App(){
+const[txns,setTxns]=useState(()=>{
+const s=ld(“lb-txns”,{});const m=mk();
+if(!s[m]||s[m].length===0){s[m]=SEED;sv(“lb-txns”,s)}return s;
+});
+const[savings,setSavings]=useState(()=>ld(“lb-savings”,{}));
+const[tab,setTab]=useState(“dashboard”);
+const[form,setForm]=useState({amount:””,category:“Food & Dining”,note:””,date:new Date().toISOString().split(“T”)[0]});
+const[toast,setToast]=useState(null);
+const[modal,setModal]=useState(false);
+const m=mk();const cur=txns[m]||[];
+
+function showToast(msg){setToast(msg);setTimeout(()=>setToast(null),2500)}
+function addTxn(){
+if(!form.amount||isNaN(parseFloat(form.amount)))return;
+const t={id:Date.now(),amount:parseFloat(form.amount),category:form.category,note:form.note,date:form.date};
+const u={…txns,[m]:[t,…(txns[m]||[])]};setTxns(u);sv(“lb-txns”,u);
+setForm({…form,amount:””,note:””});showToast(“Added ✓”);
+}
+function delTxn(id){
+const u={…txns,[m]:(txns[m]||[]).filter(t=>t.id!==id)};setTxns(u);sv(“lb-txns”,u);showToast(“Deleted”);
+}
+function closeMonth(){
+const saved=Math.max(TOTAL-totalSpent,0);
+const ns={…savings,[m]:saved};setSavings(ns);sv(“lb-savings”,ns);
+setModal(false);showToast(`Saved ${fc(saved)} this month 🎉`);
+}
+
+const spent={};Object.keys(BUDGET).forEach(c=>{spent[c]=0});
+cur.forEach(t=>{if(spent[t.category]!==undefined)spent[t.category]+=t.amount});
+const totalSpent=Object.values(spent).reduce((a,b)=>a+b,0);
+const remaining=INCOME-FIXED-totalSpent;
+const dl=dLeft();const daily=dl>0?(TOTAL-totalSpent)/dl:0;
+const projSav=Math.max(TOTAL-totalSpent,0);
+const allSaved=Object.entries(savings).sort((a,b)=>a[0].localeCompare(b[0]));
+const totalSaved=allSaved.reduce((s,[,v])=>s+v,0);
+const efPct=Math.min((totalSaved/EFGOAL)*100,100);
+const now=new Date();const mn=now.toLocaleString(“default”,{month:“long”});
+const warns=[];
+if(cur.some(t=>t.note&&t.note.includes(“🚨”)))warns.push(“🚨 Gambling charge logged this month”);
+if(cur.some(t=>t.note&&t.note.includes(“⚠️”)))warns.push(“⚠️ Duplicate Xbox — cancel one”);
+
+const inp={width:“100%”,background:“rgba(255,255,255,0.06)”,border:“1px solid rgba(255,255,255,0.12)”,borderRadius:12,padding:“13px 15px”,color:”#f1f5f9”,fontSize:16,outline:“none”,WebkitAppearance:“none”};
+
+return(
+<div style={{minHeight:“100vh”,background:“linear-gradient(135deg,#0f0c29 0%,#1a1a2e 50%,#16213e 100%)”}}>
+<div style={{background:“rgba(255,255,255,0.03)”,borderBottom:“1px solid rgba(255,255,255,0.08)”,paddingTop:“max(env(safe-area-inset-top,0px),18px)”,padding:“max(env(safe-area-inset-top,0px),18px) 20px 0”}}>
+<div style={{maxWidth:480,margin:“0 auto”}}>
+<div style={{display:“flex”,justifyContent:“space-between”,alignItems:“flex-start”,paddingBottom:8}}>
+<div>
+<div style={{fontSize:10,letterSpacing:3,color:”#64748b”,textTransform:“uppercase”,marginBottom:2}}>Daily Tracker</div>
+<div style={{fontSize:22,fontWeight:“bold”,color:”#f1f5f9”,fontFamily:”‘DM Serif Display’,serif”}}>Logan’s Budget</div>
+<div style={{fontSize:12,color:”#64748b”}}>{mn} {now.getFullYear()}</div>
+</div>
+<div style={{textAlign:“right”}}>
+<div style={{fontSize:10,color:”#64748b”,textTransform:“uppercase”,letterSpacing:1}}>Daily Left</div>
+<div style={{fontSize:24,fontWeight:“bold”,color:daily>0?”#34d399”:”#ef4444”}}>{fc(Math.max(daily,0))}</div>
+<div style={{fontSize:11,color:”#64748b”}}>{dl} days left</div>
+</div>
+</div>
+<div style={{display:“flex”}}>
+{[{k:“dashboard”,l:“📊 Overview”},{k:“add”,l:“➕ Add”},{k:“savings”,l:“💰 Savings”},{k:“history”,l:“📋 History”}].map(t=>(
+<button key={t.k} onClick={()=>setTab(t.k)} style={{flex:1,padding:“10px 0”,background:“none”,border:“none”,borderBottom:tab===t.k?“2px solid #818cf8”:“2px solid transparent”,color:tab===t.k?”#818cf8”:”#64748b”,fontSize:10,textTransform:“uppercase”,cursor:“pointer”,letterSpacing:0.5}}>
+{t.l}
+</button>
+))}
+</div>
+</div>
+</div>
+
+```
+  <div style={{maxWidth:480,margin:"0 auto",padding:"18px 16px 40px"}}>
+
+    {tab==="dashboard"&&<div>
+      {warns.map((w,i)=>(
+        <div key={i} style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.25)",borderRadius:10,padding:"10px 14px",marginBottom:10,fontSize:13,color:"#fca5a5"}}>{w}</div>
+      ))}
+      <div style={{background:"linear-gradient(135deg,rgba(52,211,153,0.1),rgba(16,185,129,0.05))",border:"1px solid rgba(52,211,153,0.25)",borderRadius:14,padding:"14px 18px",marginBottom:14}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+          <div style={{fontSize:12,color:"#34d399",letterSpacing:1,textTransform:"uppercase"}}>🎯 Emergency Fund</div>
+          <div style={{fontSize:13,fontWeight:"bold",color:"#34d399"}}>{fc(totalSaved)} <span style={{color:"#475569",fontWeight:"normal"}}>/ {fc(EFGOAL)}</span></div>
+        </div>
+        <div style={{height:8,background:"rgba(255,255,255,0.06)",borderRadius:99,overflow:"hidden"}}>
+          <div style={{height:"100%",width:`${efPct}%`,background:"linear-gradient(90deg,#34d399,#059669)",borderRadius:99}}/>
+        </div>
+        <div style={{fontSize:11,color:"#475569",marginTop:5}}>{efPct>=100?"🎉 Goal reached!":`${fc(EFGOAL-totalSaved)} to go · ${Math.round(efPct)}% there`}</div>
+      </div>
+      <div style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:16,padding:18,marginBottom:14}}>
+        <div style={{fontSize:10,letterSpacing:2,color:"#64748b",textTransform:"uppercase",marginBottom:12}}>This Month</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+          {[{l:"Income",v:fc(INCOME),c:"#34d399"},{l:"Fixed Bills",v:fc(FIXED),c:"#f97316"},{l:"Var. Spent",v:fc(totalSpent),c:totalSpent>TOTAL?"#ef4444":"#818cf8"},{l:"Remaining",v:fc(remaining),c:remaining>0?"#34d399":"#ef4444"}].map(x=>(
+            <div key={x.l} style={{background:"rgba(255,255,255,0.03)",borderRadius:10,padding:"11px 13px"}}>
+              <div style={{fontSize:10,color:"#64748b",marginBottom:3}}>{x.l}</div>
+              <div style={{fontSize:17,fontWeight:"bold",color:x.c}}>{x.v}</div>
+            </div>
+          ))}
+        </div>
+        {projSav>0&&<div style={{background:"rgba(52,211,153,0.08)",border:"1px solid rgba(52,211,153,0.2)",borderRadius:10,padding:"10px 13px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div style={{fontSize:12,color:"#34d399"}}>💰 Projected savings</div>
+          <div style={{fontSize:16,fontWeight:"bold",color:"#34d399"}}>{fc(projSav)}</div>
+        </div>}
+      </div>
+      <div style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:16,padding:18,marginBottom:14}}>
+        <div style={{fontSize:10,letterSpacing:2,color:"#64748b",textTransform:"uppercase",marginBottom:14}}>Categories</div>
+        {Object.entries(BUDGET).map(([cat,bud])=>{
+          const sp=spent[cat]||0;const pct=Math.min((sp/bud)*100,100);const over=sp>bud;
+          return(
+            <div key={cat} style={{marginBottom:13}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:5,alignItems:"center"}}>
+                <div style={{fontSize:13,display:"flex",alignItems:"center",gap:5}}>
+                  <span>{ICONS[cat]}</span><span style={{color:"#cbd5e1"}}>{cat}</span>
+                </div>
+                <div style={{fontSize:12}}>
+                  <span style={{color:over?"#ef4444":"#e2e8f0",fontWeight:"bold"}}>{fc(sp)}</span>
+                  <span style={{color:"#475569"}}> / {fc(bud)}</span>
+                  {!over&&<span style={{color:"#34d399",fontSize:11}}> · {fc(bud-sp)}</span>}
+                </div>
+              </div>
+              <div style={{height:6,background:"rgba(255,255,255,0.06)",borderRadius:99,overflow:"hidden"}}>
+                <div style={{height:"100%",width:`${pct}%`,background:over?"#ef4444":COLORS[cat],borderRadius:99}}/>
+              </div>
+              {over&&<div style={{fontSize:10,color:"#ef4444",marginTop:2}}>Over by {fc(sp-bud)}</div>}
+            </div>
+          );
+        })}
+      </div>
+      <button onClick={()=>setModal(true)} style={{width:"100%",padding:13,background:"rgba(129,140,248,0.1)",border:"1px solid rgba(129,140,248,0.3)",borderRadius:12,color:"#818cf8",fontSize:12,cursor:"pointer",letterSpacing:1}}>
+        CLOSE MONTH & RECORD SAVINGS
+      </button>
+    </div>}
+
+    {tab==="add"&&<div style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:16,padding:20}}>
+      <div style={{fontSize:10,letterSpacing:2,color:"#64748b",textTransform:"uppercase",marginBottom:18}}>Log Expense</div>
+      <div style={{marginBottom:14}}>
+        <div style={{fontSize:10,color:"#64748b",letterSpacing:1,textTransform:"uppercase",marginBottom:6}}>Amount</div>
+        <div style={{display:"flex",alignItems:"center",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:12,overflow:"hidden"}}>
+          <span style={{padding:"0 14px",color:"#34d399",fontSize:20,fontWeight:"bold"}}>$</span>
+          <input type="number" inputMode="decimal" placeholder="0.00" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})}
+            style={{flex:1,background:"none",border:"none",outline:"none",color:"#f1f5f9",fontSize:24,fontWeight:"bold",padding:"13px 13px 13px 0"}}/>
+        </div>
+      </div>
+      <div style={{marginBottom:14}}>
+        <div style={{fontSize:10,color:"#64748b",letterSpacing:1,textTransform:"uppercase",marginBottom:6}}>Category</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+          {Object.keys(BUDGET).map(cat=>(
+            <button key={cat} onClick={()=>setForm({...form,category:cat})} style={{padding:"10px 12px",background:form.category===cat?`${COLORS[cat]}22`:"rgba(255,255,255,0.04)",border:`1px solid ${form.category===cat?COLORS[cat]:"rgba(255,255,255,0.08)"}`,borderRadius:10,color:form.category===cat?COLORS[cat]:"#94a3b8",fontSize:12,cursor:"pointer",textAlign:"left"}}>
+              {ICONS[cat]} {cat}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div style={{marginBottom:14}}>
+        <div style={{fontSize:10,color:"#64748b",letterSpacing:1,textTransform:"uppercase",marginBottom:6}}>Note</div>
+        <input type="text" placeholder="Where did you spend this?" value={form.note} onChange={e=>setForm({...form,note:e.target.value})} style={inp}/>
+      </div>
+      <div style={{marginBottom:20}}>
+        <div style={{fontSize:10,color:"#64748b",letterSpacing:1,textTransform:"uppercase",marginBottom:6}}>Date</div>
+        <input type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})} style={inp}/>
+      </div>
+      <button onClick={addTxn} style={{width:"100%",padding:16,background:"linear-gradient(135deg,#667eea,#764ba2)",border:"none",borderRadius:12,color:"white",fontSize:15,fontWeight:"bold",cursor:"pointer",letterSpacing:1}}>
+        ADD EXPENSE
+      </button>
+    </div>}
+
+    {tab==="savings"&&<div>
+      <div style={{background:"linear-gradient(135deg,rgba(52,211,153,0.12),rgba(16,185,129,0.06))",border:"1px solid rgba(52,211,153,0.3)",borderRadius:16,padding:24,marginBottom:14,textAlign:"center"}}>
+        <div style={{fontSize:10,letterSpacing:3,color:"#34d399",textTransform:"uppercase",marginBottom:8}}>Total Saved</div>
+        <div style={{fontSize:48,fontWeight:"bold",color:"#34d399",fontFamily:"'DM Serif Display',serif",marginBottom:4}}>{fc(totalSaved)}</div>
+        <div style={{fontSize:13,color:"#475569"}}>{allSaved.length} closed month{allSaved.length!==1?"s":""}</div>
+        <div style={{marginTop:18}}>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:7}}>
+            <span style={{color:"#64748b"}}>🎯 Emergency Fund</span>
+            <span style={{color:"#34d399"}}>{Math.round(efPct)}%</span>
+          </div>
+          <div style={{height:10,background:"rgba(255,255,255,0.06)",borderRadius:99,overflow:"hidden"}}>
+            <div style={{height:"100%",width:`${efPct}%`,background:"linear-gradient(90deg,#34d399,#059669)",borderRadius:99}}/>
+          </div>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#475569",marginTop:5}}>
+            <span>{fc(totalSaved)} saved</span><span>{fc(EFGOAL)} goal</span>
+          </div>
+        </div>
+      </div>
+      <div style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:14,padding:18,marginBottom:14}}>
+        <div style={{fontSize:10,letterSpacing:2,color:"#64748b",textTransform:"uppercase",marginBottom:12}}>{mn} — In Progress</div>
+        <div style={{display:"flex",justifyContent:"space-between",marginBottom:9}}><span style={{fontSize:13,color:"#94a3b8"}}>Variable budget</span><span style={{fontSize:14,color:"#e2e8f0"}}>{fc(TOTAL)}</span></div>
+        <div style={{display:"flex",justifyContent:"space-between",marginBottom:9}}><span style={{fontSize:13,color:"#94a3b8"}}>Spent so far</span><span style={{fontSize:14,color:"#ef4444"}}>-{fc(totalSpent)}</span></div>
+        <div style={{height:1,background:"rgba(255,255,255,0.06)",margin:"10px 0"}}/>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <span style={{fontSize:13,color:"#34d399",fontWeight:"bold"}}>Projected savings</span>
+          <span style={{fontSize:18,color:"#34d399",fontWeight:"bold"}}>{projSav>0?fc(projSav):"$0.00"}</span>
+        </div>
+      </div>
+      {allSaved.length===0
+        ?<div style={{textAlign:"center",padding:40,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:14,color:"#475569"}}>
+          <div style={{fontSize:28,marginBottom:10}}>💰</div><div>Finish April strong then close it</div>
+        </div>
+        :<div>
+          <div style={{fontSize:10,color:"#64748b",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>Month by Month</div>
+          {allSaved.map(([k,v])=>(
+            <div key={k} style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:12,padding:"13px 16px",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div>
+                <div style={{fontSize:14,color:"#e2e8f0",fontWeight:"bold"}}>{mlabel(k)}</div>
+                <div style={{fontSize:11,color:"#475569",marginTop:2}}>{v===0?"Budget fully used":"Under budget 🎉"}</div>
+              </div>
+              <div style={{fontSize:18,fontWeight:"bold",color:v>0?"#34d399":"#64748b"}}>+{fc(v)}</div>
+            </div>
+          ))}
+        </div>
+      }
+    </div>}
+
+    {tab==="history"&&<div>
+      {cur.length===0
+        ?<div style={{textAlign:"center",padding:60,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:16,color:"#475569"}}>
+          <div style={{fontSize:32,marginBottom:12}}>📋</div><div>No transactions yet</div>
+        </div>
+        :<div>
+          <div style={{fontSize:10,color:"#64748b",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>{cur.length} transactions · {fc(totalSpent)} spent</div>
+          {cur.map(t=>{
+            const w=t.note&&(t.note.includes("🚨")||t.note.includes("⚠️"));
+            return(
+              <div key={t.id} style={{background:w?"rgba(239,68,68,0.06)":"rgba(255,255,255,0.04)",border:`1px solid ${w?"rgba(239,68,68,0.2)":"rgba(255,255,255,0.07)"}`,borderRadius:12,padding:"13px 15px",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div style={{display:"flex",alignItems:"center",gap:11}}>
+                  <div style={{width:36,height:36,borderRadius:9,background:`${COLORS[t.category]}22`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,flexShrink:0}}>{ICONS[t.category]}</div>
+                  <div>
+                    <div style={{fontSize:13,color:w?"#fca5a5":"#e2e8f0",fontWeight:"bold"}}>{t.note||t.category}</div>
+                    <div style={{fontSize:11,color:"#475569",marginTop:2}}>{t.category} · {t.date}</div>
+                  </div>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:9}}>
+                  <div style={{fontSize:15,fontWeight:"bold",color:"#ef4444"}}>-{fc(t.amount)}</div>
+                  <button onClick={()=>delTxn(t.id)} style={{background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:6,color:"#ef4444",cursor:"pointer",fontSize:11,padding:"4px 8px"}}>✕</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      }
+    </div>}
+  </div>
+
+  {modal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:20}}>
+    <div style={{background:"#1e293b",border:"1px solid rgba(255,255,255,0.1)",borderRadius:20,padding:28,maxWidth:340,width:"100%",textAlign:"center"}}>
+      <div style={{fontSize:36,marginBottom:12}}>💰</div>
+      <div style={{fontSize:18,fontWeight:"bold",color:"#f1f5f9",marginBottom:8}}>Close {mn}?</div>
+      <div style={{fontSize:28,fontWeight:"bold",color:"#34d399",margin:"16px 0"}}>{fc(projSav)}</div>
+      <div style={{fontSize:12,color:"#475569",marginBottom:20}}>saved under your variable budget</div>
+      <div style={{display:"flex",gap:10}}>
+        <button onClick={()=>setModal(false)} style={{flex:1,padding:14,background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:12,color:"#94a3b8",cursor:"pointer",fontSize:14}}>Cancel</button>
+        <button onClick={closeMonth} style={{flex:1,padding:14,background:"linear-gradient(135deg,#34d399,#059669)",border:"none",borderRadius:12,color:"white",cursor:"pointer",fontSize:14,fontWeight:"bold"}}>Lock It In</button>
+      </div>
+    </div>
+  </div>}
+
+  {toast&&<div style={{position:"fixed",bottom:"max(env(safe-area-inset-bottom,0px),24px)",left:"50%",transform:"translateX(-50%)",background:"#1e293b",border:"1px solid rgba(129,140,248,0.4)",borderRadius:10,padding:"10px 20px",fontSize:13,color:"#818cf8",boxShadow:"0 8px 32px rgba(0,0,0,0.4)",zIndex:999,whiteSpace:"nowrap"}}>{toast}</div>}
+</div>
+```
+
+);
+}
+ReactDOM.createRoot(document.getElementById(“root”)).render(<App/>);
+</script>
+
+</body>
+</html>
